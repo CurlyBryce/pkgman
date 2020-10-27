@@ -1,0 +1,109 @@
+#!/bin/bash
+# pkgman--package manager--a package manager unifier
+
+# Check if running as root
+function checkroot() {
+  if [[ "$EUID" == 0 ]]; then
+    echo -e "Do not run this script as root!\nExiting";
+    exit 1
+  fi
+}
+
+function main() {
+  # Start Init
+  # Set current info
+  version="0.1" # DO NOT CHANGE THIS VALUE
+  manager=$(managersel)
+  m_prefix=""
+  options=""
+
+  # Begin
+  # Parse options then remove them
+  parse_options "$@"
+  shift $?
+
+  # Parse commands
+  parse_commands "$@"
+
+}
+
+function parse_options() {
+  # Init option counter
+  counter=0
+
+  # Loop through all the arguments/options
+  for x in "$@"; do
+    # Add one to the counter
+    counter=$(($counter + 1))
+    # Check if x is an option and remove 1 from counter
+    [[ $x != -? ]] && counter=$(($counter - 1)) && break;
+    # Add arg to the options list
+    options="$options $x"
+
+    # Check for endarg
+    [[ $x == "--" ]] && break;
+
+    # Test options
+    case $x in
+      -s) m_prefix="sudo $m_prefix";;
+      *) info unkopt $x && exit 1;;
+    esac;
+  done
+
+  # Return counted options
+  return $counter
+}
+
+function parse_commands() {
+  # Check for args
+  [[ ! $1 ]] && info noarg && exit 1;
+  # Check for manager
+  [[ ! $manager ]] && info noman;
+  # Remove first arg for passthrough
+  pass="${@:2}"
+
+  # Parse commands
+  case $1 in
+    p|passthrough) $manager $pass;;
+    u|update) c_update $pass;;
+    i|info) info info;;
+    h|help|commands) info usage; info commands;;
+    *) info unkarg $1;;
+  esac
+  exit 1
+}
+
+# Info pages
+function info() {
+  case $1 in
+    usage|noarg) echo -e "Usage: pkgman [options] [--] <command> [subcommand]";;
+    unkarg) echo -e "Unknown argument \"$2\": Please use the help command";;
+    unkopt) echo -e "Unknown option \"$2\": Please use the help command";;
+    commands) echo -e "Commands:\nh|help\t\tShow help\ni|info\t\tShow info\np|passthrough\t\tPassthrough to the manager\nu|update\tUpdate local package repositories";;
+    info) echo -e "Version\t\t${version}\nManager\t\t${manager}\nManager Prefix\t${m_prefix}\nOptions\t\t${options}";;
+    noman) echo "No manager found!";;
+    unimp) echo "Not implemented";;
+    updateinfo) info unimp;;
+    *) echo "no known help";;
+  esac
+}
+
+function c_update() {
+  # Parse subcommand
+  case $1 in
+    help) info updateinfo;;
+    *) info unimp;;
+  esac
+}
+#function c_upgrade() {}
+#function c_install() {}
+#function c_remove() {}
+
+# Find or select the installed package manager
+function managersel() {
+  [[ $MANAGER ]] && echo "$MANAGER" && return;
+  [[ -f /usr/bin/apt ]] && echo "apt" && return;
+  [[ -f /usr/bin/pacman ]] && echo "pacman" && return;
+}
+
+checkroot && main "$@"
