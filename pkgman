@@ -67,6 +67,8 @@ function parse_commands() {
     u|update) c_update $pass;;
     s|search) c_search $pass;;
     i|install) c_install $pass;;
+    g|upgrade) c_upgrade $pass;;
+    r|remove) c_remove $pass;;
     d|debug) info info;;
     h|help) info $2;;
     *) info unkarg $1;;
@@ -93,9 +95,12 @@ function info() {
     # Help
     usage) echo -e "Usage: pkgman [options] [--] <command> [subcommand]";; # Program usage
     commands) echo -e "Commands:\nh|help [command]\tShow help\nd|debug\t\t\tShow debugging info\np|passthrough\t\tPassthrough to the manager\nu|update\t\tUpdate local package repositories\ns|search\t\tSearch for repository packages\ni|install";; # Commands list
-    u|update) echo -e "Update Command:\nRun without a subcommand to update\nh|help\t\tShow this page";; # Command update
+    u|update) echo -e "Update Command:\nRun without a subcommand to update local repositories\nh|help\t\tShow this page";; # Command update
     s|search) echo -e "Search Command:\nSubcommand is the search string";; # Command search
     i|install) echo -e "Install Command:\nSubcommand is the packages to install";; # Command install
+    g|upgrade)echo -e "Upgrade Command:\nRun without a subcommand to upgrade all system packages\nh|help\t\tShow this page";; # Command upgrade
+    r|remove) echo -e "Remove Command:\nSubcommand is the packages to remove";; # Command remove
+
 
     # Error
     noman) echo "No manager found!";; # No manager
@@ -125,10 +130,11 @@ function c_update() {
   esac
 }
 
+# Command search
 function c_search() {
   # Check for subcommand
   if [[ $1 ]]; then
-    # Update repos
+    # Search repos
     echo "Searching repositories"
     case $manager in
       pacman) $manager -Ss ${@};;
@@ -142,10 +148,11 @@ function c_search() {
   fi
 }
 
+# Command install
 function c_install() {
   # Check for subcommand
   if [[ $1 ]]; then
-    # Update repos
+    # Install packages
     echo "Installing packages"
     case $manager in
       pacman) sudo $manager -S ${@};;
@@ -159,8 +166,44 @@ function c_install() {
   fi
 }
 
-#function c_upgrade() {}
-#function c_remove() {}
+# Command upgrade
+function c_upgrade() {
+  # Check for subcommand
+  if [[ ! $1 ]]; then
+    # Upgrade all packages
+    echo "Upgrading system"
+    case $manager in
+      pacman) sudo $manager -Su;;
+      apt) sudo $manager upgrade;;
+      *) info unkman;;
+    esac
+    exit 1
+  fi
+
+  # Parse subcommand
+  case $1 in
+    h|help) info upgrade;;
+    *) info unkarg $1;;
+  esac
+}
+
+# Command remove
+function c_remove() {
+  # Check for subcommand
+  if [[ $1 ]]; then
+    # Remove packages
+    echo "Removing packages"
+    case $manager in
+      pacman) sudo $manager -R ${@};;
+      apt) sudo $manager remove ${@};;
+      *) info unkman;;
+    esac
+    exit 1
+
+    else
+      info remove;
+  fi
+}
 
 # Find or select the installed package manager
 function managersel() {
