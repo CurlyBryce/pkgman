@@ -11,7 +11,7 @@ function checkroot() {
 
 function main() {
   # Start Init
-  # Set current info
+  # Init/set debug info
   version="0.1" # DO NOT CHANGE THIS VALUE
   manager=$(managersel)
   m_prefix=""
@@ -24,7 +24,6 @@ function main() {
 
   # Parse commands
   parse_commands "$@"
-
 }
 
 function parse_options() {
@@ -56,7 +55,7 @@ function parse_options() {
 
 function parse_commands() {
   # Check for args
-  [[ ! $1 ]] && info noarg && exit 1;
+  [[ ! $1 ]] && info usage && exit 1;
   # Check for manager
   [[ ! $manager ]] && info noman;
   # Remove first arg for passthrough
@@ -64,10 +63,12 @@ function parse_commands() {
 
   # Parse commands
   case $1 in
-    p|passthrough) $manager $pass;;
+    p|passthrough) $m_prefix $manager $pass;;
     u|update) c_update $pass;;
-    i|info) info info;;
-    h|help|commands) info usage; info commands;;
+    s|search) c_search $pass;;
+    i|install) c_install $pass;;
+    d|debug) info info;;
+    h|help) info $2;;
     *) info unkarg $1;;
   esac
   exit 1
@@ -75,28 +76,90 @@ function parse_commands() {
 
 # Info pages
 function info() {
+  # Check for no args
+  [[ ! $1 ]] && info usage && info commands && exit 1;
+
   case $1 in
-    usage|noarg) echo -e "Usage: pkgman [options] [--] <command> [subcommand]";;
-    unkarg) echo -e "Unknown argument \"$2\": Please use the help command";;
-    unkopt) echo -e "Unknown option \"$2\": Please use the help command";;
-    commands) echo -e "Commands:\nh|help\t\tShow help\ni|info\t\tShow info\np|passthrough\t\tPassthrough to the manager\nu|update\tUpdate local package repositories";;
-    info) echo -e "Version\t\t${version}\nManager\t\t${manager}\nManager Prefix\t${m_prefix}\nOptions\t\t${options}";;
-    noman) echo "No manager found!";;
-    unimp) echo "Not implemented";;
-    updateinfo) info unimp;;
-    *) echo "no known help";;
+    # Debugging
+    info|h|help) echo -e "Version\t\t${version}\nManager\t\t${manager}\nManager Prefix\t${m_prefix}\nOptions\t\t${options}";;
+
+    # Unknowns
+    unkarg) echo -e "Unknown argument \"$2\"";; # Unknown argument
+    unkopt) echo -e "Unknown option \"$2\"";; # Unknown option
+    unkcom) echo -e "Unknown command \"$2\"";; # Unknown command
+    unksub) echo -e "Unknown subcommand \"$2\"";; # Unknown subcommand
+    unkman) echo -e "Unknown manager \"$manager\"";; # Unknown manager
+
+    # Help
+    usage) echo -e "Usage: pkgman [options] [--] <command> [subcommand]";; # Program usage
+    commands) echo -e "Commands:\nh|help [command]\tShow help\nd|debug\t\t\tShow debugging info\np|passthrough\t\tPassthrough to the manager\nu|update\t\tUpdate local package repositories\ns|search\t\tSearch for repository packages\ni|install";; # Commands list
+    u|update) echo -e "Update Command:\nRun without a subcommand to update\nh|help\t\tShow this page";; # Command update
+    s|search) echo -e "Search Command:\nSubcommand is the search string";; # Command search
+    i|install) echo -e "Install Command:\nSubcommand is the packages to install";; # Command install
+
+    # Error
+    noman) echo "No manager found!";; # No manager
+    unimp) echo "Not implemented";; # Not implemented
+    *) echo "no known help";; # Unknown help page
   esac
 }
 
+# Command update
 function c_update() {
+  # Check for subcommand
+  if [[ ! $1 ]]; then
+    # Update repos
+    echo "Updating repositories"
+    case $manager in
+      pacman) sudo $manager -Sy;;
+      apt) sudo $manager update;;
+      *) info unkman;;
+    esac
+    exit 1
+  fi
+
   # Parse subcommand
   case $1 in
-    help) info updateinfo;;
-    *) info unimp;;
+    h|help) info update;;
+    *) info unkarg $1;;
   esac
 }
+
+function c_search() {
+  # Check for subcommand
+  if [[ $1 ]]; then
+    # Update repos
+    echo "Searching repositories"
+    case $manager in
+      pacman) $manager -Ss ${@};;
+      apt) $manager search ${@};;
+      *) info unkman;;
+    esac
+    exit 1
+
+    else
+      info search;
+  fi
+}
+
+function c_install() {
+  # Check for subcommand
+  if [[ $1 ]]; then
+    # Update repos
+    echo "Installing packages"
+    case $manager in
+      pacman) sudo $manager -S ${@};;
+      apt) sudo $manager install ${@};;
+      *) info unkman;;
+    esac
+    exit 1
+
+    else
+      info install;
+  fi
+}
+
 #function c_upgrade() {}
-#function c_install() {}
 #function c_remove() {}
 
 # Find or select the installed package manager
